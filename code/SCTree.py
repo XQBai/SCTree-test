@@ -14,17 +14,25 @@ import numpy as np
 import math
 import random
 import scipy.sparse as sp
+from copy import deepcopy
 
-def test(Data, num_way, startcell, data_type):
+def test(input_data, num_way, startcell, data_type, n=2, verbose = True):
 
+    Data = deepcopy(input_data)
     '''
 
     :param Data: Dataframe of cells X expression genes
     :param num_way: The dimension of matrix D which is that subsampling size
     :param startcell: piror start cell or a random cell in data
     :param data_type: 'sc-seq'
+    :param n: the number of k in k-nearest graph equals to kmin*n
+    :param verbose: if the startcell is known, verbose = True, otherwise, verbose = False
     :return: p-value and SNR （signal-to-noise ratio）
     '''
+    # Start cell index
+    start = np.where(Data.index == startcell)[0]
+    if len(start) == 0:
+        raise RuntimeError('Start cell %s not found in data. Please rerun with correct start cell' % startcell)
 
     if not (isinstance(Data, pd.DataFrame)):
         raise TypeError('data must be of type or DataFrame')
@@ -37,10 +45,7 @@ def test(Data, num_way, startcell, data_type):
                     Please select a smaller number')
 
     start_time = time.process_time()
-    #Start cell index
-    s = np.where(Data.index == startcell)[0]
-    if len(s) == 0:
-        raise RuntimeError('Start cell %s not found in data. Please rerun with correct start cell' % startcell)
+
 
     #If the dimension is less than 20, PCA reduction dimensionality
     if Data.shape[1] > 20:
@@ -49,23 +54,29 @@ def test(Data, num_way, startcell, data_type):
     else:
         pca_data = Data
         com_list = list(range(Data.shape[1]))
-
     #Construct the knn graph
-    k, knn = _knn(pca_data, com_list, n = 2)
+    k, knn = _knn(pca_data, com_list, n)
+
+    if verbose == True:
+        s = start
+    else:
+        dist = sp.csgraph.dijkstra(knn, directed=False, indices=start[0])
+        s = np.where(dist == np.max(dist))[0]
 
     #Randomly select some points to construct discordance matrix DC
     subsample_points = random.sample(list(range(0, len(Data))), num_way)
 
     #Compute the discordance matrix DC
-    DC = discordance_matrix(knn, subsample_points, startcell)
+    DC = discordance_matrix(knn, subsample_points, s[0])
 
     # Transform the discordance matrix to Wigner-like matrix
-    DC1, SNR = Normalization(pca_data, DC, subsample_points, startcell)
+    DC1, SNR = Normalization(pca_data, DC, subsample_points, s[0])
     DC1 = np.nan_to_num(DC1)
     DC1[np.isinf(DC1)] = 0
     DC3 = Permutation(DC1)
 
     eigs, eigvector = np.linalg.eig(DC3)
+
 
     v = list()
     # Bootstrap the eigenvalues
@@ -134,6 +145,7 @@ def normalize_scseq(data):
 
 def pca_reduce(data):
 
+
     """
     Principal component analysis of the data.
 
@@ -160,6 +172,7 @@ def pca_reduce(data):
     l, M = np.linalg.eig(C)
 
     # select PCA components
+    #n_components = 100
     n_components = np.min(np.where(np.abs(np.diff(np.diff(l))) < 0.0001)[0] + 1)
 
     # Sort eigenvectors in descending order
@@ -173,13 +186,14 @@ def pca_reduce(data):
         print('Target dimensionality reduced to ' + str(n_components) + '.')
 
     M = M[:, ind[:n_components]]
+    #ACR = np.sum(l[:n_components]) / np.sum(l)
     l = l[:n_components]
     # Apply mapping on the data
     if X.shape[1] >= X.shape[0]:
         M = np.multiply(np.dot(X.T, M), (1 / np.sqrt(X.shape[0] * l)).T)
 
     loadings = pd.DataFrame(data=M, index=data.columns)
-    l = pd.DataFrame(l)
+    #l = pd.DataFrame(l)
 
     data -= np.min(np.ravel(data))
     data /= np.max(np.ravel(data))
@@ -250,7 +264,7 @@ def Normalization(pca_data, DC, waypoints, startcell):
     __console__ = sys.stdout
     sys.stdout = open('/dev/null', 'w')
     k, knn = _knn(pca_data, com_list, n = 2)
-    res = wishbone.core.wishbone(pca_data.ix[:, com_list].values, startcell, k=2 * k, l=2 * k, num_waypoints=150)
+    res = wishbone.core.wishbone(pca_data.ix[:, com_list].values, startcell, k=2 * k, l=2 * k, num_waypoints=100)
     branches = res['Branches']
 
     t = list(np.where(branches == 1)[0])
