@@ -20,8 +20,8 @@ SCTree test is an algorithm that can statistical detect the hidden structure of 
 If data need to be normalized, then the normlize = True, otherwise, False. "sampling_size" can be choiced as the number smaller than the data size. If the start cell is known, the "startcell" is the index of startcell and verbose = True; otherwise, the verbsose = False and "startcell" can be any given cell . The result of "SNR" means the signal-to-noise ratio, the data has linear structure when "p-value" is greater than 0.05, otherwise, the data is branched structure.
 
 # Paper
-[Statistical test of structured continuous trees based on discordance matrix, Bioinformatics, 2019]
+Statistical test of structured continuous trees based on discordance matrix, Bioinformatics, 2019
 
 # Authors
 
-Xiangqi Bai1, Liang Ma and Lin Wan
+Xiangqi Bai, Liang Ma and Lin Wan
