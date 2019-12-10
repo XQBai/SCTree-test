@@ -26,4 +26,7 @@ If data need to be normalized, then the normlize = True, otherwise, False. "samp
 
 Xiangqi Bai, Liang Ma and Lin Wan
 
+# License
+[MIT](https://github.com/XQBai/SCTree-test/blob/master/LICENSE)
+
 ## If there are any questions, please contact xqbai@amss.ac.cn.
